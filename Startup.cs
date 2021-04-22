@@ -1,84 +1,53 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
-namespace IdentityServer
+namespace MvcClient
 {
     public class Startup
     {
-       // private readonly IConfiguration _config;
-       // private readonly IWebHostEnvironment _env;
-
-       // public Startup(IConfiguration config, IWebHostEnvironment env)
-       // {
-        //    _config = config;
-       //     _env = env;
-       // }
-
         public void ConfigureServices(IServiceCollection services)
         {
-           // var connectionString = _config.GetConnectionString("DefaultConnection");
+            services.AddAuthentication(config => {
+                config.DefaultScheme = "Cookie";
+                config.DefaultChallengeScheme = "oidc";
+            })
+                .AddCookie("Cookie")
+                .AddOpenIdConnect("oidc", config => {
+                    config.Authority = "https://localhost:44305/";
+                    config.ClientId = "client_id_mvc";
+                    config.ClientSecret = "client_secret_mvc";
+                    config.SaveTokens = true;
+                    config.ResponseType = "code";
+                    config.SignedOutCallbackPath = "/Home/Index";
 
-          //  services.AddDbContext<AppDbContext>(config =>
-          //  {
-          //      config.UseSqlServer(connectionString);
-                //config.UseInMemoryDatabase("Memory");
-          //  });
+                    // configure cookie claim mapping
+               //     config.ClaimActions.DeleteClaim("amr");
+               //     config.ClaimActions.DeleteClaim("s_hash");
+               //     config.ClaimActions.MapUniqueJsonKey("RawCoding.Grandma", "rc.garndma");
 
-            // AddIdentity registers the services
-           // services.AddIdentity<IdentityUser, IdentityRole>(config =>
-           // {
-           //     config.Password.RequiredLength = 4;
-           //     config.Password.RequireDigit = false;
-           //     config.Password.RequireNonAlphanumeric = false;
-           //     config.Password.RequireUppercase = false;
-          //  })
-           //     .AddEntityFrameworkStores<AppDbContext>()
-        //        .AddDefaultTokenProviders();
+                    // two trips to load claims in to the cookie
+                    // but the id token is smaller !
+              //      config.GetClaimsFromUserInfoEndpoint = true;
 
-        //    services.ConfigureApplicationCookie(config =>
-        //    {
-        //        config.Cookie.Name = "IdentityServer.Cookie";
-        //        config.LoginPath = "/Auth/Login";
-        //        config.LogoutPath = "/Auth/Logout";
-        //    });
+                    // configure scope
+              //      config.Scope.Clear();
+              //      config.Scope.Add("openid");
+              //      config.Scope.Add("rc.scope");
+              //      config.Scope.Add("ApiOne");
+              //      config.Scope.Add("ApiTwo");
+              //      config.Scope.Add("offline_access");
 
-            //var assembly = typeof(Startup).Assembly.GetName().Name;
+                });
 
-            //var filePath = Path.Combine(_env.ContentRootPath, "is_cert.pfx");
-            //var certificate = new X509Certificate2(filePath, "password");
-
-            services.AddIdentityServer()
-                //.AddAspNetIdentity<IdentityUser>()
-                //.AddConfigurationStore(options =>
-                //{
-                //    options.ConfigureDbContext = b => b.UseSqlServer(connectionString,
-                //        sql => sql.MigrationsAssembly(assembly));
-                //})
-                //.AddOperationalStore(options =>
-                //{
-                //    options.ConfigureDbContext = b => b.UseSqlServer(connectionString,
-                //        sql => sql.MigrationsAssembly(assembly));
-                //})
-                //.AddSigningCredential(certificate);
-                .AddInMemoryApiResources(Configuration.GetApis())
-                .AddInMemoryIdentityResources(Configuration.GetIdentityResources())
-                .AddInMemoryClients(Configuration.GetClients())
-                .AddDeveloperSigningCredential();
-
-        //    services.AddAuthentication()
-           //     .AddFacebook(config => {
-          //          config.AppId = "3396617443742614";
-          //          config.AppSecret = "secret";
-          //      });
+            services.AddHttpClient();
 
             services.AddControllersWithViews();
         }
@@ -92,15 +61,9 @@ namespace IdentityServer
 
             app.UseRouting();
 
-            app.UseIdentityServer();
+            app.UseAuthentication();
 
-           // if (_env.IsDevelopment())
-           // {
-           //     app.UseCookiePolicy(new CookiePolicyOptions()
-           //     {
-           //         MinimumSameSitePolicy = Microsoft.AspNetCore.Http.SameSiteMode.Lax
-           ////     });
-           // }
+            app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
             {
