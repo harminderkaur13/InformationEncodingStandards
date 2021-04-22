@@ -1,110 +1,100 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using Final_project.CustomPolicyProvider;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace Client.Controllers
+namespace Final_project.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly IHttpClientFactory _httpClientFactory;
-       
-
-           public HomeController(IHttpClientFactory httpClientFactory)
-           {
-            _httpClientFactory = httpClientFactory;
-            
-           }
-
         public IActionResult Index()
         {
             return View();
         }
 
         [Authorize]
-
-        public async Task<IActionResult> Secret()
+        public IActionResult Secret()
         {
-            var token = await HttpContext.GetTokenAsync("access_token");
-            var apiClient = _httpClientFactory.CreateClient();
-            apiClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-
-            var apiResponse = await apiClient.GetAsync("https://localhost:44323/secret/index");
             return View();
         }
 
-        //     var apiResponse = await AccessTokenRefreshWrapper(
-        //         () => SecuredGetRequest("https://localhost:44311/secret/index"));
-
-        //    return View();
-        // }
-
-         private async Task<HttpResponseMessage> SecuredGetRequest(string url)
-         {
-             var token = await HttpContext.GetTokenAsync("access_token");
-             var client = _httpClientFactory.CreateClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
-             return await client.GetAsync(url);
-         }
-
-            public async Task<HttpResponseMessage> AccessTokenRefreshWrapper(
-           Func<Task<HttpResponseMessage>> initialRequest)
-            {
-             var response = await initialRequest();
-
-            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-               await RefreshAccessToken();
-                response = await initialRequest();
-            }
-
-           return response;
-            }
-
-        private async Task RefreshAccessToken()
+        [Authorize(Policy = "Claim.har")]
+        public IActionResult SecretPolicy()
         {
-            var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
-
-            var refreshTokenClient = _httpClientFactory.CreateClient();
-
-            var requestData = new Dictionary<string, string>
-            {
-                ["grant_type"] = "refresh_token",
-                ["refresh_token"] = refreshToken
-            };
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "https://localhost:44311/oauth/token")
-            {
-                Content = new FormUrlEncodedContent(requestData)
-            };
-        
-                  var basicCredentials = "username:password";
-                 var encodedCredentials = Encoding.UTF8.GetBytes(basicCredentials);
-                 var base64Credentials = Convert.ToBase64String(encodedCredentials);
-           
-                    request.Headers.Add("Authorization", $"Basic {base64Credentials}");
-            
-                 var response = await refreshTokenClient.SendAsync(request);
-                 
-                  var responseString = await response.Content.ReadAsStringAsync();
-                   var responseData = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseString);
-            
-                 var newAccessToken = responseData.GetValueOrDefault("access_token");
-                   var newRefreshToken = responseData.GetValueOrDefault("refresh_token");
-
-                 var authInfo = await HttpContext.AuthenticateAsync("ClientCookie");
-
-                   authInfo.Properties.UpdateTokenValue("access_token", newAccessToken);
-                  authInfo.Properties.UpdateTokenValue("refresh_token", newRefreshToken);
-
-                await HttpContext.SignInAsync("ClientCookie", authInfo.Principal, authInfo.Properties);
+            return View("Secret");
         }
+
+        [Authorize(Roles = "designer")]
+        public IActionResult SecretRole()
+        {
+            return View("Secret");
+        }
+
+        [SecurityLevel(5)]
+        public IActionResult SecretLevel()
+        {
+            return View("Secret");
+        }
+
+        [SecurityLevel(10)]
+        public IActionResult SecretHigherLevel()
+        {
+            return View("Secret");
+        }
+
+        [AllowAnonymous]
+        public IActionResult Authenticate()
+        {
+            var webClaims = new List<Claim>()
+            {
+                new Claim(ClaimTypes.Name, "harminder"),
+                new Claim(ClaimTypes.Email, "harminder@fmail.com"),
+                new Claim(ClaimTypes.DateOfBirth, "10/10/1998"),
+                new Claim(ClaimTypes.Role, "designer"),
+                new Claim(ClaimTypes.Role, "designerTwo"),
+                new Claim(DynamicPolicies.SecurityLevel, "7"),
+                new Claim("webpage.Says", "everything look good"),
+            };
+
+            var securityClaims = new List<Claim>()
+            {
+                new Claim(ClaimTypes.Name, "harminder"),
+                new Claim("securityLicense", "A+"),
+            };
+
+            var webIdentity = new ClaimsIdentity(webClaims, "web Identity");
+            var securityIdentity = new ClaimsIdentity(securityClaims, "Government");
+
+            var userPrincipal = new ClaimsPrincipal(new[] { webIdentity, securityIdentity });
+            
+            //-----------------------------------------------------------
+            HttpContext.SignInAsync(userPrincipal);
+
+            return RedirectToAction("Index");
+        }
+
+        public async Task<IActionResult> DoStuff(
+            [FromServices] IAuthorizationService authorizationService)
+        {
+            // we are doing stuff here
+
+            var builder = new AuthorizationPolicyBuilder("Schema");
+            var customPolicy = builder.RequireClaim("Hello").Build();
+
+            var authResult = await authorizationService.AuthorizeAsync(User, customPolicy);
+
+            if (authResult.Succeeded)
+            {
+                return View("Index");
+            }
+
+            return View("Index");
+        }
+
     }
 }
