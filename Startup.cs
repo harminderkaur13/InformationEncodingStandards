@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace ApiOne
+namespace ApiTwo
 {
     public class Startup
     {
@@ -20,16 +20,16 @@ namespace ApiOne
                 {
                     config.Authority = "https://localhost:44359/";
 
-                    config.Audience = "ApiOne";
+                    config.Audience = "ApiTwo";
 
-                  //  config.RequireHttpsMetadata = false;
+                    //  config.RequireHttpsMetadata = false;
                 });
 
-          //  services.AddCors(confg =>
-           //     confg.AddPolicy("AllowAll",
-           //         p => p.AllowAnyOrigin()
-           //             .AllowAnyMethod()
-           //             .AllowAnyHeader()));
+            //  services.AddCors(confg =>
+            //     confg.AddPolicy("AllowAll",
+            //         p => p.AllowAnyOrigin()
+            //             .AllowAnyMethod()
+            //             .AllowAnyHeader()));
 
             services.AddControllers();
         }
@@ -41,7 +41,7 @@ namespace ApiOne
                 app.UseDeveloperExceptionPage();
             }
 
-           // app.UseCors("AllowAll");
+            // app.UseCors("AllowAll");
 
             app.UseRouting();
 
