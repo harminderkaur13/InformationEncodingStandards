@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Final_project
+namespace IdentityExample
 {
     public class Program
     {

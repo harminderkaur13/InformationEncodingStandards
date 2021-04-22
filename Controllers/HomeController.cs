@@ -1,6 +1,6 @@
-﻿using Final_project.CustomPolicyProvider;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -8,10 +8,22 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace Final_project.Controllers
+namespace IdentityExample.Controllers
 {
     public class HomeController : Controller
     {
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<IdentityUser> _signInManager;
+        
+        public HomeController(
+                    UserManager<IdentityUser> userManager,
+                    SignInManager<IdentityUser> signInManager)
+                   // IEmailService emailService)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+           // _emailService = emailService;
+        }
         public IActionResult Index()
         {
             return View();
@@ -22,79 +34,78 @@ namespace Final_project.Controllers
         {
             return View();
         }
-
-        [Authorize(Policy = "Claim.har")]
         public IActionResult SecretPolicy()
         {
             return View("Secret");
         }
-
-        [Authorize(Roles = "designer")]
-        public IActionResult SecretRole()
+        public IActionResult Login()
         {
-            return View("Secret");
+
+            return View();
         }
-
-        [SecurityLevel(5)]
-        public IActionResult SecretLevel()
+        public async Task <IActionResult> Login(string username, string password)
         {
-            return View("Secret");
-        }
+            //login functionality
 
-        [SecurityLevel(10)]
-        public IActionResult SecretHigherLevel()
-        {
-            return View("Secret");
-        }
+            var user =await _userManager.FindByNameAsync(username);
 
-        [AllowAnonymous]
-        public IActionResult Authenticate()
-        {
-            var webClaims = new List<Claim>()
+            if (user != null)
             {
-                new Claim(ClaimTypes.Name, "harminder"),
-                new Claim(ClaimTypes.Email, "harminder@fmail.com"),
-                new Claim(ClaimTypes.DateOfBirth, "10/10/1998"),
-                new Claim(ClaimTypes.Role, "designer"),
-                new Claim(ClaimTypes.Role, "designerTwo"),
-                new Claim(DynamicPolicies.SecurityLevel, "7"),
-                new Claim("webpage.Says", "everything look good"),
+                //sign in
+                 var signInResult = await _signInManager.PasswordSignInAsync(user, password, false, false);
+
+                 if (signInResult.Succeeded)
+                 {
+                    return RedirectToAction("Index");
+                 }
+            }
+                return RedirectToAction("Index");
+        }
+        public IActionResult Register()
+        {
+
+            return View();
+        }
+        [HttpPost]
+        public async Task<IActionResult> Register(string username, string password)
+        {
+            //register functionality
+
+            var user = new IdentityUser
+            {
+                UserName = username,
+                Email = "",
             };
 
-            var securityClaims = new List<Claim>()
+            var result = await _userManager.CreateAsync(user, password);
+
+            if (result.Succeeded)
             {
-                new Claim(ClaimTypes.Name, "harminder"),
-                new Claim("securityLicense", "A+"),
-            };
+                var signInResult = await _signInManager.PasswordSignInAsync(user, password, false, false);
 
-            var webIdentity = new ClaimsIdentity(webClaims, "web Identity");
-            var securityIdentity = new ClaimsIdentity(securityClaims, "Government");
+                if (signInResult.Succeeded)
+                {
+                    return RedirectToAction("Index");
+                }
 
-            var userPrincipal = new ClaimsPrincipal(new[] { webIdentity, securityIdentity });
-            
-            //-----------------------------------------------------------
-            HttpContext.SignInAsync(userPrincipal);
 
+
+                //generation of the email token
+                // var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+                // var link = Url.Action(nameof(VerifyEmail), "Home", new { userId = user.Id, code }, Request.Scheme, Request.Host.ToString());
+
+                // await _emailService.SendAsync("test@test.com", "email verify", $"<a href=\"{link}\">Verify Email</a>", true);
+
+                //return RedirectToAction("EmailVerification");
+            }
             return RedirectToAction("Index");
         }
 
-        public async Task<IActionResult> DoStuff(
-            [FromServices] IAuthorizationService authorizationService)
+        public async Task<IActionResult> LogOut()
         {
-            // we are doing stuff here
-
-            var builder = new AuthorizationPolicyBuilder("Schema");
-            var customPolicy = builder.RequireClaim("Hello").Build();
-
-            var authResult = await authorizationService.AuthorizeAsync(User, customPolicy);
-
-            if (authResult.Succeeded)
-            {
-                return View("Index");
-            }
-
-            return View("Index");
+            await _signInManager.SignOutAsync();
+            return RedirectToAction("Index");
         }
-
     }
 }

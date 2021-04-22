@@ -1,107 +1,78 @@
-using Final_project.AuthorizationRequirements;
-using Final_project.Controllers;
-using Final_project.CustomPolicyProvider;
-using Final_project.Transformer;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
+using IdentityExample.Data;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 
-namespace Final_project
+namespace IdentityExample
 {
     public class Startup
     {
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddAuthentication("CookieAuth")
-                .AddCookie("CookieAuth", config =>
-                {
-                    config.Cookie.Name = "web.Cookie";
-                    config.LoginPath = "/Home/Authenticate";
-                });
-
-            services.AddAuthorization(config =>
+            services.AddDbContext<AppDbContext>(config =>
             {
-                //var defaultAuthBuilder = new AuthorizationPolicyBuilder();
-                //var defaultAuthPolicy = defaultAuthBuilder
-                //    .RequireAuthenticatedUser()
-                //    .RequireClaim(ClaimTypes.DateOfBirth)
-                //    .Build();
-
-                //config.DefaultPolicy = defaultAuthPolicy;
-
-
-                //config.AddPolicy("Claim.har", policyBuilder =>
-                //{
-                //    policyBuilder.RequireClaim(ClaimTypes.DateOfBirth);
-                //});
-
-                config.AddPolicy("designer", policyBuilder => policyBuilder.RequireClaim(ClaimTypes.Role, "designer"));
-
-                config.AddPolicy("Claim.har", policyBuilder =>
-                {
-                    policyBuilder.RequireCustomClaim(ClaimTypes.DateOfBirth);
-                });
+                config.UseInMemoryDatabase("Memory");
             });
 
-            services.AddSingleton<IAuthorizationPolicyProvider, CustomAuthorizationPolicyProvider>();
-            services.AddScoped<IAuthorizationHandler, SecurityLevelHandler>();
-            services.AddScoped<IAuthorizationHandler, CustomRequireClaimHandler>();
-            services.AddScoped<IAuthorizationHandler, CookieJarAuthorizationHandler>();
-            services.AddScoped<IClaimsTransformation, ClaimsTransformation>();
+            
+            // AddIdentity registers the services
+            services.AddIdentity<IdentityUser, IdentityRole>(config =>
+                
+                {
+                    config.Password.RequiredLength = 4;
+                    config.Password.RequireDigit = false;
+                    config.Password.RequireNonAlphanumeric = false;
+                    config.Password.RequireUppercase = false;
+                   // config.SignIn.RequireConfirmedEmail = true;
+                })
 
-            services.AddControllersWithViews(config =>
+                .AddEntityFrameworkStores<AppDbContext>()
+                .AddDefaultTokenProviders();
+
+            services.ConfigureApplicationCookie(config =>
             {
-                var defaultAuthBuilder = new AuthorizationPolicyBuilder();
-                var defaultAuthPolicy = defaultAuthBuilder
-                    .RequireAuthenticatedUser()
-                    .Build();
-
-                // global authorization filter
-                //config.Filters.Add(new AuthorizeFilter(defaultAuthPolicy));
+                config.Cookie.Name = "security.Cookie";
+                config.LoginPath = "/Home/Login";
             });
 
-            services.AddRazorPages()
-               .AddRazorPagesOptions(config =>
-               {
-                     config.Conventions.AuthorizePage("/Razor/Secured");
-                     config.Conventions.AuthorizePage("/Razor/Policy", "designer");
-                     config.Conventions.AuthorizeFolder("/RazorSecured");
-                     config.Conventions.AllowAnonymousToPage("/RazorSecured/Anon");
-                });
+
+
+
+            // services.AddMailKit(config => config.UseMailKit(_config.GetSection("Email").Get<MailKitOptions>()));
+            // services.AddAuthentication("CookieAuth")
+            //   .AddCookie("CookieAuth", config =>
+            //  {
+            //    config.Cookie.Name = "Web.Development";
+            //     config.LoginPath = "/Home/Authenticate";
+            //  });
+            services.AddControllersWithViews();
         }
-
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
-
             app.UseRouting();
-
-            // who are you?
+            //who are you?
             app.UseAuthentication();
-
-            // are you allowed?
+            //are you allowed?
             app.UseAuthorization();
+
 
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapDefaultControllerRoute();
-                endpoints.MapRazorPages();
             });
         }
     }
-    }
-
+}
