@@ -1,6 +1,3 @@
-using Api.AuthRequirement;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -12,29 +9,27 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Api
+namespace ApiOne
 {
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)
         {
-               services.AddAuthentication("DefaultAuth")
-             .AddScheme<AuthenticationSchemeOptions, CustomeAuthenticationHandler>("DefaultAuth", null);
+            services.AddAuthentication("Bearer")
+                .AddJwtBearer("Bearer", config =>
+                {
+                    config.Authority = "https://localhost:44359/";
 
-            services.AddAuthorization(config =>
-            {
-                var defaultAuthBuilder = new AuthorizationPolicyBuilder();
-                var defaultAuthPolicy = defaultAuthBuilder
-                    .AddRequirements(new JwtRequirement())
-                    .Build();
+                    config.Audience = "ApiOne";
 
-                config.DefaultPolicy = defaultAuthPolicy;
-            });
+                  //  config.RequireHttpsMetadata = false;
+                });
 
-            services.AddScoped<IAuthorizationHandler, JwtRequirementHandler>();
-
-            services.AddHttpClient()
-              .AddHttpContextAccessor();
+          //  services.AddCors(confg =>
+           //     confg.AddPolicy("AllowAll",
+           //         p => p.AllowAnyOrigin()
+           //             .AllowAnyMethod()
+           //             .AllowAnyHeader()));
 
             services.AddControllers();
         }
@@ -46,6 +41,8 @@ namespace Api
                 app.UseDeveloperExceptionPage();
             }
 
+           // app.UseCors("AllowAll");
+
             app.UseRouting();
 
             app.UseAuthentication();
@@ -54,7 +51,7 @@ namespace Api
 
             app.UseEndpoints(endpoints =>
             {
-                endpoints.MapDefaultControllerRoute();
+                endpoints.MapControllers();
             });
         }
     }
