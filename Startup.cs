@@ -1,55 +1,53 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.HttpsPolicy;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
-namespace MvcClient
+namespace Server
 {
     public class Startup
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddAuthentication(config => {
-                config.DefaultScheme = "Cookie";
-                config.DefaultChallengeScheme = "oidc";
-            })
-                .AddCookie("Cookie")
-                .AddOpenIdConnect("oidc", config => {
-                    config.Authority = "https://localhost:44305/";
-                    config.ClientId = "client_id_mvc";
-                    config.ClientSecret = "client_secret_mvc";
-                    config.SaveTokens = true;
-                    config.ResponseType = "code";
-                    config.SignedOutCallbackPath = "/Home/Index";
+                services.AddAuthentication("OAuth")
+                .AddJwtBearer("OAuth", config =>
+                {
+                   var secretBytes = Encoding.UTF8.GetBytes(Constants.Secret);
+                  var key = new SymmetricSecurityKey(secretBytes);
 
-                    // configure cookie claim mapping
-               //     config.ClaimActions.DeleteClaim("amr");
-               //     config.ClaimActions.DeleteClaim("s_hash");
-               //     config.ClaimActions.MapUniqueJsonKey("RawCoding.Grandma", "rc.garndma");
+                   config.Events = new JwtBearerEvents()
+                    {
+                      OnMessageReceived = context =>
+                       {
+                           if (context.Request.Query.ContainsKey("access_token"))
+                           {
+                               context.Token = context.Request.Query["access_token"];
+                           }
 
-                    // two trips to load claims in to the cookie
-                    // but the id token is smaller !
-              //      config.GetClaimsFromUserInfoEndpoint = true;
+                           return Task.CompletedTask;
+                       }
+                   };
 
-                    // configure scope
-              //      config.Scope.Clear();
-              //      config.Scope.Add("openid");
-              //      config.Scope.Add("rc.scope");
-              //      config.Scope.Add("ApiOne");
-              //      config.Scope.Add("ApiTwo");
-              //      config.Scope.Add("offline_access");
-
+                   config.TokenValidationParameters = new TokenValidationParameters()
+                   {
+                       ClockSkew = TimeSpan.Zero,
+                       ValidIssuer = Constants.Issuer,
+                       ValidAudience = Constants.Audiance,
+                       IssuerSigningKey = key,
+                   };
                 });
 
-            services.AddHttpClient();
-
-            services.AddControllersWithViews();
+            services.AddControllersWithViews()
+               .AddRazorRuntimeCompilation();
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
